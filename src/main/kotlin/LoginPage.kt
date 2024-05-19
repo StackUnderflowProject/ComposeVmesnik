@@ -1,4 +1,7 @@
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -8,19 +11,40 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key.Companion.R
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import compose.icons.AllIcons
+import compose.icons.FontAwesomeIcons
+import compose.icons.fontawesomeicons.Brands
+import compose.icons.fontawesomeicons.Regular
+import compose.icons.fontawesomeicons.brands.Github
+import compose.icons.fontawesomeicons.regular.Eye
+import compose.icons.fontawesomeicons.regular.EyeSlash
+import compose.icons.fontawesomeicons.regular.Image
+
 import kotlinx.coroutines.delay
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+val Roboto = FontFamily(
+    Font(resource = "font/Roboto-Regular.ttf"),
+)
 fun isPasswordValid(password: String,updateRestrictions:(String)-> Unit): Boolean {
     val minLength = 8
     val containsUpperCase = "[A-Z]".toRegex().containsMatchIn(password)
@@ -45,7 +69,6 @@ fun isPasswordValid(password: String,updateRestrictions:(String)-> Unit): Boolea
     if (!containsSpecialChar) {
         errorMessage.append("Password must contain at least one special character.\n")
     }
-    println(errorMessage.toString())
     updateRestrictions(errorMessage.toString())
     return password.length >= minLength &&
             containsUpperCase &&
@@ -61,6 +84,7 @@ fun LoginPage(onLogin: (String, String) -> Unit) {
     var passwordVisible by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf(true) }
     var restrictions by remember { mutableStateOf("") }
+
     Column(
         modifier = Modifier
             .fillMaxSize(0.75f)
@@ -68,10 +92,20 @@ fun LoginPage(onLogin: (String, String) -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Login", style = MaterialTheme.typography.h4)
+
+        Text(text = "Login", style = TextStyle(fontFamily =Roboto, fontSize = 30.sp)
+        )
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = username,
+            keyboardOptions = KeyboardOptions.Default.copy(
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {onLogin(username,password) }
+            ),
+            singleLine = true,
+
             onValueChange = { username = it },
             label = { Text("Username") },
             modifier = Modifier.fillMaxWidth(),
@@ -84,12 +118,27 @@ fun LoginPage(onLogin: (String, String) -> Unit) {
             onValueChange = { password = it;showError = !isPasswordValid(password) { res -> restrictions = res} },
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions.Default.copy(
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {onLogin(username,password) }
+            ),
+            singleLine = true,
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
-
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    if (passwordVisible) Icon(imageVector = Icons.Filled.Settings, contentDescription = "hide")
-                    else Icon(Icons.Filled.Settings, contentDescription = "show")
+                /*FloatingActionButton(onClick = {passwordVisible = !passwordVisible}, backgroundColor = Color.Cyan){
+                    if (passwordVisible) Icon(imageVector = FontAwesomeIcons.Regular.EyeSlash, contentDescription = "hide", modifier = Modifier.size(20.dp))
+                    else Icon(
+                        imageVector = FontAwesomeIcons.Regular.Eye	,null,modifier = Modifier.size(20.dp)
+                    )
+                }*/
+               IconButton(onClick = { passwordVisible = !passwordVisible },modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+               ) {
+                    if (passwordVisible) Icon(imageVector = FontAwesomeIcons.Regular.EyeSlash, contentDescription = "hide", modifier = Modifier.size(20.dp))
+                    else Icon(
+                        imageVector = FontAwesomeIcons.Regular.Eye	,null,modifier = Modifier.size(20.dp)
+                    )
                 }
             },
             leadingIcon = { Icon(Icons.Filled.Lock,"pass") },
@@ -110,8 +159,8 @@ fun LoginPage(onLogin: (String, String) -> Unit) {
 
 
         Spacer(modifier = Modifier.height(16.dp))
-        if (!showError)Button(onClick = { onLogin(username, password) }) {
-            Text("Login")
+        if (!showError)Button(onClick = { onLogin(username, password) }, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)) {
+            Text("Login", style = MaterialTheme.typography.h1, modifier = Modifier.background(Color.Green))
         }
     }
 }
@@ -166,9 +215,11 @@ fun auth(username:String,password:String,tokenUpdate:  (String) -> Unit): Boolea
             println("Request failed: ${response.message}")
             return false
         }
+
     } catch (e: IOException) {
-        return false
         println("Request failed: ${e.message}")
+        return false
+
     }
 
 }
