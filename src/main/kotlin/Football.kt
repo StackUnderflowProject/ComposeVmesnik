@@ -3,6 +3,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
@@ -11,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -24,7 +27,19 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
-
+import java.sql.Date
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.concurrent.thread
+fun parseDate(dateString: String): java.util.Date? {
+    return try {
+        val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        format.isLenient = false
+        return format.parse(dateString)
+    } catch (e: Exception) {
+        null
+    }
+}
 fun fetchFootballMatches(token : String):MutableList<FootballMatch>{
     val client = OkHttpClient()
     val request = Request.Builder()
@@ -137,7 +152,9 @@ fun TextFild(label: String,value: String,updateData : (String) -> Unit){
 }
 @Composable
 fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballMatch) -> Unit,deleteMatch: (FootballMatch)->Unit) {
+    var errorMessage by remember { mutableStateOf("") }
 
+    var dateInput by remember {  mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(footballMatch.date).toString()) }
     var editing by remember { mutableStateOf(false) }
     var date by remember { mutableStateOf(footballMatch.date) }
     var time by remember { mutableStateOf(footballMatch.time) }
@@ -157,10 +174,10 @@ fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballM
         ) {
             if (!editing) {
                 Text(text = "Match ID: ${footballMatch._id}", style = MaterialTheme.typography.h6 )
-                Text(text = "Date: ${date}", style = MaterialTheme.typography.h6 )
+                Text(text = "Date: ${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)}", style = MaterialTheme.typography.h6 )
                 Text(text = "Time: ${footballMatch.time}", style = MaterialTheme.typography.h6 )
-                Text(text = "Home Team: ${footballMatch.home.name}", style = MaterialTheme.typography.h6 )
-                Text(text = "Away Team: ${footballMatch.away.name}", style = MaterialTheme.typography.h6 )
+                //Text(text = "Home Team: ${footballMatch.home ?: "a"}", style = MaterialTheme.typography.h6 )
+                //Text(text = "Away Team: ${footballMatch.away.name}", style = MaterialTheme.typography.h6 )
                 Text(text = "Score: ${footballMatch.score}", style = MaterialTheme.typography.h6 )
                 Text(text = "Location: ${footballMatch.location}", style = MaterialTheme.typography.h6 )
                 Text(text = "Season: ${footballMatch.season}", style = MaterialTheme.typography.h6 )
@@ -174,10 +191,49 @@ fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballM
                     }
                 }
             } else {
-                TextFild("Date", footballMatch.date){ dat -> date = dat}
+                OutlinedTextField(
+                    value = dateInput,
+                    onValueChange = {
+                        dateInput = it
+                        val parsedDate = parseDate(it)
+                        if (parsedDate != null) {
+                            date = parsedDate
+                            errorMessage = ""
+                        } else {
+                            errorMessage = "Invalid date format. Use YYYY-MM-DD."
+                        }
+                    },
+                    label = { Text("Date") },
+                    textStyle = MaterialTheme.typography.h6,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    isError = errorMessage.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (errorMessage.isNotEmpty()) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colors.error,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                //TextFild("Date", footballMatch.date.toString()){ dat -> date = Date.valueOf(dat)}
                 TextFild("Time", footballMatch.time){ tim -> time = tim}
                 TextFild("Location", footballMatch.location) { loc -> location = loc }
-                TextFild("Season", footballMatch.season.toString()) { ses -> season = ses.toInt() }
+                OutlinedTextField(
+                    value = if (season != 0){season.toString()}else "",
+                    onValueChange = { season = it.toIntOrNull() ?: if (it.isEmpty() ){0}else season },
+
+                    label = { Text("Season") },
+                    textStyle = MaterialTheme.typography.h6,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    modifier = Modifier
+                )
                 TextFild("Score", footballMatch.score) { scr -> score = scr }
 
 

@@ -174,6 +174,7 @@ fun Toast(message: String, onDismiss: () -> Unit) {
         modifier = Modifier.fillMaxSize(0.75f),
         contentAlignment = Alignment.BottomCenter
     ) {
+
         Card(
             backgroundColor = Color.Red,
             contentColor = Color.White,
@@ -190,8 +191,13 @@ fun Toast(message: String, onDismiss: () -> Unit) {
 
 
 data class Data(
+    val userId: String,
+    val username: String,
+    val email : String,
+    val version : Int,
+    val image : String,
     val token: String,
-)
+    )
 fun auth(username:String,password:String,tokenUpdate:  (String) -> Unit): Boolean{
     val client = OkHttpClient()
 

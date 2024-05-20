@@ -31,6 +31,7 @@ import androidx.compose.ui.window.application
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
 import kotlinx.coroutines.launch
+import java.util.*
 
 enum class Pages { Login, Content }
 enum class Tabs { Scraper,Editor,Generator}
@@ -38,7 +39,7 @@ enum class Sports{Football,Handball}
 enum class Datasets{Matches,Standing,Teams}
 data class FootballMatch(
     val _id: String,
-    val date: String,
+    val date: Date,
     val time: String,
     val home: Team,
     val away: Team,
@@ -202,21 +203,26 @@ fun DropdownSports(updateSports: (Sports) -> Unit){
 fun Editor(token: String){
     var sport by remember { mutableStateOf(Sports.values().first()) }
     var datasets by remember { mutableStateOf(Datasets.values().first()) }
-    Column {   Row (modifier = Modifier.padding(start = 20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround){
+    Column {
+        Row (modifier = Modifier.padding(start = 20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround){
         DropdownDatasets { set -> datasets = set }
         DropdownSports { sp -> sport = sp}
     }
-        Row {Box( modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+
+
+        Row(modifier = Modifier.fillMaxSize()) {
+
+            Box( modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
             when(sport){
-                Sports.Football -> when(datasets){Datasets.Matches-> {val footballMatches by produceState<MutableList<FootballMatch>?>(initialValue = null) {
-                    value = fetchFootballMatches(token)
-                }
+                Sports.Football -> when(datasets){Datasets.Matches-> {
+                    val footballMatches by produceState<MutableList<FootballMatch>?>(initialValue = null) { value = fetchFootballMatches(token) }
                     if (footballMatches == null) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Fetching...")                        }
+                        Text("Fetching...")
                     } else {
                         LazyGrid(token = token, items = footballMatches!!)
-                    }};else -> Text("else")}
+                    }};
+                    Datasets.Teams ->  LazyGrid(fetchFootballTeams(),token)
+                    else -> Text("else")}
                 else -> Text("else")
             }
         }  }
