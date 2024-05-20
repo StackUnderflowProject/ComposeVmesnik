@@ -63,10 +63,15 @@ data class Stadium(
     val _id: String,
     val name: String,
     val teamId: String,
+    val location: Location,
     val capacity: Int,
     val buildYear: Int,
     val imageUrl: String,
     val season: Int,
+)
+data class Location(
+    val type: String,
+    val coordinates: List<Double>
 )
 
 
@@ -202,6 +207,7 @@ fun DropdownSports(updateSports: (Sports) -> Unit){
 @Composable
 fun Editor(token: String){
     var sport by remember { mutableStateOf(Sports.values().first()) }
+    var index by remember { mutableStateOf(0) }
     var datasets by remember { mutableStateOf(Datasets.values().first()) }
     Column {
         Row (modifier = Modifier.padding(start = 20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround){
@@ -219,11 +225,22 @@ fun Editor(token: String){
                     if (footballMatches == null) {
                         Text("Fetching...")
                     } else {
-                        LazyGrid(token = token, items = footballMatches!!)
+                        LazyGrid(token = token, items = footballMatches!!, index = index){num -> index = num; }
                     }};
                     Datasets.Teams ->  LazyGrid(fetchFootballTeams(),token)
                     else -> Text("else")}
-                else -> Text("else")
+                Sports.Handball -> when(datasets){
+                    Datasets.Matches-> {
+                    val handballMatches by produceState<MutableList<FootballMatch>?>(initialValue = null) { value = fetchHandballMatches((token)) }
+                    if (handballMatches == null) {
+                        Text("Fetching...")
+                    } else {
+                        LazyGridH(token = token, items = handballMatches!!)
+                    }};
+                    Datasets.Teams ->  LazyGridH(fetchHandballTeams(),token)
+
+                    else ->Text("else")
+                }
             }
         }  }
     }

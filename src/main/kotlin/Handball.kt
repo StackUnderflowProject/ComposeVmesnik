@@ -1,11 +1,11 @@
-import androidx.compose.foundation.*
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,21 +31,12 @@ import java.sql.Date
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.concurrent.thread
-fun parseDate(dateString: String): java.util.Date? {
-    return try {
-        val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        format.isLenient = false
-        return format.parse(dateString)
-    } catch (e: Exception) {
-        null
-    }
-}
-fun fetchFootballMatches(token : String):MutableList<FootballMatch>{
+
+fun fetchHandballMatches(token : String):MutableList<FootballMatch>{
     val client = OkHttpClient()
     val request = Request.Builder()
-        .url("http://localhost:3000/footballMatch/")
+        .url("http://localhost:3000/handballMatch/")
         .build()
-    println("fetch")
     try {
         val response: Response = client.newCall(request).execute()
         val json = response.body?.string() ?: ""
@@ -59,14 +50,14 @@ fun fetchFootballMatches(token : String):MutableList<FootballMatch>{
         return mutableListOf()
     }
 }
-fun updateFootballMatch(token: String, updatedMatch: FootballMatch): Boolean {
+fun updateHandballMatch(token: String, updatedMatch: FootballMatch): Boolean {
     val client = OkHttpClient()
     val gson = Gson()
     val jsonMatch = gson.toJson(updatedMatch)
     val requestBody = jsonMatch.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
 
     val request = Request.Builder()
-        .url("http://localhost:3000/footballMatch/${updatedMatch._id}")
+        .url("http://localhost:3000/handballMatch/${updatedMatch._id}")
         .put(requestBody)
         .addHeader("Authorization", "Bearer $token")
         .build()
@@ -86,11 +77,11 @@ fun updateFootballMatch(token: String, updatedMatch: FootballMatch): Boolean {
         false
     }
 }
-fun deleteFootballMatch(token: String, id: String): Boolean {
+fun deleteHandballMatch(token: String, id: String): Boolean {
     val client = OkHttpClient()
 
     val request = Request.Builder()
-        .url("http://localhost:3000/footballMatch/$id")
+        .url("http://localhost:3000/handballMatch/$id")
         .delete()
         .addHeader("Authorization", "Bearer $token")
         .build()
@@ -110,137 +101,18 @@ fun deleteFootballMatch(token: String, id: String): Boolean {
         false
     }
 }
-@Composable
-fun EditStadiumDropdownMenu(
-    stadium: Stadium,
-    onStadiumUpdated: (Stadium) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf(stadium.name) }
-    var capacity by remember { mutableStateOf(stadium.capacity.toString()) }
-    var locationType by remember { mutableStateOf(stadium.location.type) }
-    var coordinates by remember { mutableStateOf(stadium.location.coordinates.joinToString(", ")) }
-    var buildYear by remember { mutableStateOf(stadium.buildYear.toString()) }
-    var imageUrl by remember { mutableStateOf(stadium.imageUrl) }
-    var season by remember { mutableStateOf(stadium.season.toString()) }
-
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Button(onClick = {expanded = true}){
-                Text("Stadium")
-                Icon(imageVector = Icons.Filled.ArrowDropDown,null)
-            }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("Name") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = capacity,
-                        onValueChange = { capacity = it },
-                        label = { Text("Capacity") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Done
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = locationType,
-                        onValueChange = { locationType = it },
-                        label = { Text("Location Type") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = coordinates,
-                        onValueChange = { coordinates = it },
-                        label = { Text("Coordinates (comma separated)") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Done
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = buildYear,
-                        onValueChange = { buildYear = it },
-                        label = { Text("Build Year") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Done
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = imageUrl,
-                        onValueChange = { imageUrl = it },
-                        label = { Text("Image URL") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Uri,
-                            imeAction = ImeAction.Done
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = season,
-                        onValueChange = { season = it },
-                        label = { Text("Season") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Done
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Button(
-                        onClick = {
-                            val updatedStadium = stadium.copy(
-                                name = name,
-                                capacity = capacity.toIntOrNull() ?: stadium.capacity,
-                                location = Location(
-                                    type = locationType,
-                                    coordinates = coordinates.split(",").mapNotNull { it.trim().toDoubleOrNull() }
-                                ),
-                                buildYear = buildYear.toIntOrNull() ?: stadium.buildYear,
-                                imageUrl = imageUrl,
-                                season = season.toIntOrNull() ?: stadium.season
-                            )
-                            onStadiumUpdated(updatedStadium)
-                            expanded = false
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
-                    ) {
-                        Text("Save Changes")
-                    }
-                }
-            }
-        }
-    }
-
-
 
 @Composable
-fun LazyGrid(items: MutableList<FootballMatch>,token: String,index :Int,updateIndex: (Int)-> Unit) {
+fun LazyGridH(items: MutableList<FootballMatch>,token: String) {
+    val state = rememberLazyListState(0)
     var matches by remember { mutableStateOf(items) }
-    var scrState = rememberLazyListState(index)
-    LaunchedEffect(scrState.firstVisibleItemIndex){
-        updateIndex(scrState.firstVisibleItemIndex)
-    }
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            state = scrState
+            state = state,
+            modifier = Modifier.fillMaxSize()
         ) {
             items(matches.size) { index ->
-                FMatch(token = token,matches[index], onUpdateMatch =  { updatedMatch ->
+                HMatch(token = token,matches[index], onUpdateMatch =  { updatedMatch ->
                     println(updatedMatch.score)
 
                     matches = matches.toMutableList().apply { this[index] = updatedMatch }
@@ -253,13 +125,12 @@ fun LazyGrid(items: MutableList<FootballMatch>,token: String,index :Int,updateIn
         }
         VerticalScrollbar(
             modifier = Modifier.align(Alignment.CenterEnd).padding(end = 2.dp),
-            adapter = rememberScrollbarAdapter(scrollState = scrState),
-
+            adapter = rememberScrollbarAdapter(scrollState = state)
         )
     }
 }
 
-@Composable
+/*@Composable
 fun TextFild(label: String,value: String,updateData : (String) -> Unit){
     var valueDate  = remember { mutableStateOf(value) }
     OutlinedTextField(
@@ -269,9 +140,9 @@ fun TextFild(label: String,value: String,updateData : (String) -> Unit){
         textStyle = MaterialTheme.typography.h6
     )
 
-}
+}*/
 @Composable
-fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballMatch) -> Unit,deleteMatch: (FootballMatch)->Unit) {
+fun HMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballMatch) -> Unit,deleteMatch: (FootballMatch)->Unit) {
     var errorMessage by remember { mutableStateOf("") }
 
     var dateInput by remember {  mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(footballMatch.date).toString()) }
@@ -281,15 +152,13 @@ fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballM
     var score by remember { mutableStateOf(footballMatch.score) }
     var location by remember { mutableStateOf(footballMatch.location) }
     var season by remember { mutableStateOf(footballMatch.season) }
-    var stadium by remember { mutableStateOf(footballMatch.stadium) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         backgroundColor = Color.White,
-        elevation = 8.dp,
-
+        elevation = 8.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -310,7 +179,7 @@ fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballM
                     Button(onClick = { editing = !editing }) {
                         Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
                     }
-                    Button(onClick = {deleteFootballMatch(token,footballMatch._id);deleteMatch(footballMatch)}, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)) {
+                    Button(onClick = {deleteHandballMatch( token,footballMatch._id);deleteMatch(footballMatch)}, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)) {
                         Icon(imageVector = TablerIcons.Trash, contentDescription = null)
                     }
                 }
@@ -359,20 +228,20 @@ fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballM
                     modifier = Modifier
                 )
                 TextFild("Score", footballMatch.score) { scr -> score = scr }
-                //EditStadiumDropdownMenu(stadium) { stm -> stadium = stm }
+
 
                 Row(horizontalArrangement = Arrangement.SpaceAround) {
                     Button(
                         onClick = {
                             val mtch =  footballMatch.copy(
-                            date = date,
-                            time = time,
-                            score = score,
-                            season = season,
-                            location = location,
+                                date = date,
+                                time = time,
+                                score = score,
+                                season = season,
+                                location = location,
                             )
                             onUpdateMatch(mtch)
-                            updateFootballMatch(token = token,mtch)
+                            updateHandballMatch(token = token,mtch)
                             editing = false
                         },
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
