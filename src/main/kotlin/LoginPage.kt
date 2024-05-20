@@ -84,7 +84,6 @@ fun LoginPage(onLogin: (String, String) -> Unit) {
     var passwordVisible by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf(true) }
     var restrictions by remember { mutableStateOf("") }
-
     Column(
         modifier = Modifier
             .fillMaxSize(0.75f)
