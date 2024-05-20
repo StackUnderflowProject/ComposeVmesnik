@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -87,28 +88,41 @@ fun DropdownDatasets(updateDatasets: (Datasets) -> Unit) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 when (selectedItem) {
-                    Datasets.Standing -> Row {
-                        Text("Standings");Icon(
-                        painter = painterResource("drawable/scoreboard.svg"),
-                        contentDescription = null
-                    )
+                    Datasets.Standing ->  Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Icon(painter = painterResource("drawable/scoreboard.svg"), contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Standings")
+                        IconButton(
+                            onClick = {expanded = !expanded},
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(imageVector = Icons.Filled.ArrowDropDown, contentDescription = null)
+                        }
                     }
-
-                    Datasets.Matches -> Row {
-                        Text("Matches");Icon(
-                        imageVector = TablerIcons.Tournament,
-                        contentDescription = null
-                    )
-                    }
-
-                    Datasets.Teams -> Row {
-                        Text("Teams");Icon(
-                        painter = painterResource("drawable/shirt.svg"),
-                        contentDescription = null
-                    )
-                    }
-
-
+                    Datasets.Matches ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                            Icon(imageVector = TablerIcons.Tournament, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Matches")
+                            IconButton(
+                                onClick = {expanded = !expanded},
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(imageVector = Icons.Filled.ArrowDropDown, contentDescription = null)
+                            }
+                        }
+                    Datasets.Teams ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                            Icon(painter = painterResource("drawable/shirt.svg"), contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Teams")
+                            IconButton(
+                                onClick = {expanded = !expanded},
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(imageVector = Icons.Filled.ArrowDropDown, contentDescription = null)
+                            }
+                        }
                 }
             }
         }
@@ -154,23 +168,66 @@ fun DropdownDatasets(updateDatasets: (Datasets) -> Unit) {
     }
 
 
+val LeftRoundedCornerShape: Shape = RoundedCornerShape(
+    topStart = 6.dp,
+    topEnd = 0.dp,
+    bottomEnd = 0.dp,
+    bottomStart = 6.dp
+)
+
+val RightRoundedCornerShape: Shape = RoundedCornerShape(
+    topStart = 0.dp,
+    topEnd = 6.dp,
+    bottomEnd = 6.dp,
+    bottomStart = 0.dp
+)
+
 
 @Composable
 fun DropdownSports(updateSports: (Sports) -> Unit){
     var expanded by remember { mutableStateOf(false) }
     var selectedItem by remember { mutableStateOf(Sports.values().first()) }
     Column {
-        Button(
-            onClick = { expanded = !expanded },
-            modifier = Modifier.padding(16.dp)
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                when(selectedItem){
-                    Sports.Football -> Row { Text("Football");Icon(imageVector = TablerIcons.BallFootball, contentDescription = null) }
-                    Sports.Handball ->  Row { Text("Handball");Icon(painterResource("drawable/handball.svg"), contentDescription = null) }
+            Button(
+                onClick = { expanded = !expanded },
+                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 0.dp),
+            ) {
+                when (selectedItem) {
+                    Sports.Football ->  Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Icon(imageVector = TablerIcons.BallFootball, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Football")
+                        IconButton(
+                            onClick = {expanded = !expanded},
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(imageVector = Icons.Filled.ArrowDropDown, contentDescription = null)
+                        }
+                    }
+
+                    Sports.Handball -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Icon(painter = painterResource("drawable/handball.svg"), contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Handball")
+                        IconButton(
+                            onClick = {expanded = !expanded},
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(imageVector = Icons.Filled.ArrowDropDown, contentDescription = null)
+                        }
+                    }
                 }
             }
+
         }
+
+
+
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
