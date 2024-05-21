@@ -24,6 +24,7 @@ import compose.icons.tablericons.X
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
@@ -40,7 +41,33 @@ fun parseDate(dateString: String): java.util.Date? {
         null
     }
 }
-fun fetchFootballMatches(token : String):MutableList<FootballMatch>{
+fun createFootballMatch(token: String, match: FootballMatch): Boolean {
+    val client = OkHttpClient()
+
+    val gson = Gson()
+    val jsonMatch = gson.toJson(match)
+    val requestBody: RequestBody = jsonMatch.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+
+    val request = Request.Builder()
+        .url("http://localhost:3000/footballMatch")
+        .post(requestBody)
+        .addHeader("Authorization", "Bearer $token")
+        .build()
+
+    return try {
+        val response: Response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            println("Create successful: ${response.body?.string()}")
+            true
+        } else {
+            println("Create failed: ${response.code}")
+            false
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        false
+    }
+}fun fetchFootballMatches(token : String):MutableList<FootballMatch>{
     val client = OkHttpClient()
     val request = Request.Builder()
         .url("http://localhost:3000/footballMatch/")

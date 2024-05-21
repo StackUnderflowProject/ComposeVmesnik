@@ -217,7 +217,7 @@ fun HandballTeam(token: String, team: Team, onUpdateTeam: (Team) -> Unit, onDele
                                 season = season
                             )
                             onUpdateTeam(updatedTeam)
-                            updateFootballTeam(token,updatedTeam)
+                            updateHandballTeam(token,updatedTeam)
                             isEditing = false
                         },
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)

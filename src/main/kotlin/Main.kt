@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -20,24 +21,46 @@ import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.painter.BrushPainter
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.key.Key.Companion.A
 import androidx.compose.ui.input.key.Key.Companion.R
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.useResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import java.io.IOException
+import java.time.LocalDate
 import java.util.*
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
 enum class Pages { Login, Content }
 enum class Tabs { Scraper,Editor,Generator}
 enum class Sports{Football,Handball}
 enum class Datasets{Matches,Standing,Teams}
+fun Float.roundTo(decimalPlaces: Int): Float {
+    val factor = 10.0.pow(decimalPlaces)
+    return (this * factor).roundToInt() / factor.toFloat()
+}
+
+fun ClosedFloatingPointRange<Float>.roundTo(decimalPlaces: Int): ClosedFloatingPointRange<Float> {
+    val roundedStart = start.roundTo(decimalPlaces)
+    val roundedEnd = endInclusive.roundTo(decimalPlaces)
+    return roundedStart..roundedEnd
+}
 data class FootballMatch(
     val _id: String,
     val date: Date,
@@ -46,7 +69,7 @@ data class FootballMatch(
     val away: Team,
     val score: String,
     val location: String,
-    val stadium: Stadium,
+    val stadium: StadiumU,
     val season: Int,
 )
 
@@ -63,6 +86,17 @@ data class Team(
 data class Stadium(
     val _id: String,
     val name: String,
+    val teamId: Team,
+    val location: Location,
+    val capacity: Int,
+    val buildYear: Int,
+    val imageUrl: String,
+    val season: Int,
+)
+
+data class StadiumU(
+    val _id: String,
+    val name: String,
     val teamId: String,
     val location: Location,
     val capacity: Int,
@@ -74,8 +108,94 @@ data class Location(
     val type: String,
     val coordinates: List<Double>
 )
+fun randomDateBetween(startDate: Date, endDate: Date): Date {
+    val startMillis = startDate.time
+    val endMillis = endDate.time
+    val randomMillis = startMillis + (Math.random() * (endMillis - startMillis)).toLong()
+    return Date(randomMillis)
+}
 
+fun randomIntBetween(start: Int, end: Int): Int {
+    return (start..end).random()
+}
 
+fun generateMatch(
+    dateMin: Date,
+    dateMax: Date,
+    scoreMin: Int,
+    scoreMax: Int,
+    seasonMin: Int,
+    seasonMax: Int,
+    time : String
+): FootballMatch {
+    val randomDate = randomDateBetween(dateMin, dateMax)
+    val randomSeason = randomIntBetween(seasonMin, seasonMax)
+    val teams = fetchFootballTeams()
+    val stadiums = fetchFootballStadiums()
+    val rds = stadiums!!.random()
+    return FootballMatch(
+        _id = "",
+        date = randomDate,
+        score = "${randomIntBetween(scoreMin,scoreMax)}-${randomIntBetween(scoreMin,scoreMax)}",
+        season = randomSeason,
+        location = "David",
+        away = teams!!.random(),
+        home = teams!!.random(),
+        time = time,
+        stadium = StadiumU(rds._id,rds.name, buildYear = rds.buildYear, capacity = rds.capacity, imageUrl = rds.imageUrl, location =  rds.location, season =  rds.season, teamId = rds.teamId._id)
+    )
+}
+fun fetchFootballStadiums():MutableList<Stadium>{
+    val client = OkHttpClient()
+    val request = Request.Builder()
+        .url("http://localhost:3000/footballStadium/")
+        .build()
+    try {
+        val response: Response = client.newCall(request).execute()
+        val json = response.body?.string() ?: ""
+        val type = object : TypeToken<MutableList<Stadium>>() {}.type
+        val gson = Gson()
+        var matches : MutableList<Stadium> = gson.fromJson(json,type)
+
+        return matches
+    } catch (e: IOException) {
+        e.printStackTrace()
+        return mutableListOf()
+    }
+}
+fun fetchStadiums(sports: Sports): List<Stadium>?
+{
+    var url = ""
+    if (sports == Sports.Football){
+        url = "http://localhost:3000/footballSatadium/"
+    }
+    else{
+        url = "http://localhost:3000/handballStadium/"
+    }
+    val client = OkHttpClient()
+    val request = Request.Builder()
+        .url(url)
+        .build()
+
+    return try {
+        val response: Response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val body = response.body?.string()
+            if (!body.isNullOrEmpty()) {
+                val teamListType = object : TypeToken<List<Stadium>>() {}.type
+                Gson().fromJson(body, teamListType)
+            } else {
+                null
+            }
+        } else {
+            println("Error: ${response.code}")
+            null
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        null
+    }
+}
 
 @Composable
 fun DropdownDatasets(updateDatasets: (Datasets) -> Unit) {
@@ -306,6 +426,195 @@ fun Editor(token: String){
 
 
     }
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun Generator(token: String,onGenerateClick: (Sports)-> Unit) {
+    var number by remember { mutableStateOf(1) }
+    var datasets by remember { mutableStateOf(Datasets.values().first()) }
+    var sports by remember { mutableStateOf(Sports.values().first()) }
+    var dateMin by remember { mutableStateOf(Date()) }
+    var dateMinInput by remember { mutableStateOf("") }
+    var dateMax by remember { mutableStateOf(Date(0,0,0)) }
+    var dateMaxInput by remember { mutableStateOf("") }
+    var scoreMin by remember { mutableStateOf("") }
+    var scoreMax by remember { mutableStateOf("") }
+    var seasonMin by remember { mutableStateOf("") }
+    var seasonMax by remember { mutableStateOf("") }
+    var sliderPosition by remember { mutableStateOf(0f..24f) }
+
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        // Row for dropdowns
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                OutlinedTextField(
+                    value = if (number != 0){number.toString()}else "",
+                    onValueChange = {
+                        number = it.toIntOrNull() ?: if (it.isEmpty() ){0}else number
+                    },
+                    label = { Text("Number of generated data") },
+                    textStyle = MaterialTheme.typography.h6,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    )
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Date range inputs
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                OutlinedTextField(
+                    value = dateMinInput,
+                    onValueChange = {
+                        dateMinInput = it
+                        val parsedDate = parseDate(it)
+                        if (parsedDate != null) {
+                            dateMin = parsedDate
+                        }
+                    },
+                    label = { Text("Date Min (YYYY-MM-DD)") },
+                    textStyle = MaterialTheme.typography.h6,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    )
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                OutlinedTextField(
+                    value = dateMaxInput,
+                    onValueChange = {
+                        dateMaxInput = it
+                        val parsedDate = parseDate(it)
+                        if (parsedDate != null) {
+                            dateMax = parsedDate
+                        }
+                    },
+                    label = { Text("Date Max (YYYY-MM-DD)") },
+                    textStyle = MaterialTheme.typography.h6,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    )
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Score range inputs
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                OutlinedTextField(
+                    value = scoreMin,
+                    onValueChange = { scoreMin = it },
+                    label = { Text("Score Min") },
+                    textStyle = MaterialTheme.typography.h6,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    )
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                OutlinedTextField(
+                    value = scoreMax,
+                    onValueChange = { scoreMax = it },
+                    label = { Text("Score Max") },
+                    textStyle = MaterialTheme.typography.h6,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    )
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Season range inputs
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                OutlinedTextField(
+                    value = seasonMin,
+                    onValueChange = { seasonMin = it },
+                    label = { Text("Season Min") },
+                    textStyle = MaterialTheme.typography.h6,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    )
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                OutlinedTextField(
+                    value = seasonMax,
+                    onValueChange = { seasonMax = it },
+                    label = { Text("Season Max") },
+                    textStyle = MaterialTheme.typography.h6,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    )
+                )
+            }
+
+        }
+        Row (modifier = Modifier.fillMaxWidth()){
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                RangeSlider(
+                    value = sliderPosition,
+                    onValueChange = { range ->
+                        sliderPosition = range.start.roundToInt().toFloat()..range.endInclusive.roundToInt().toFloat()
+                    },
+                    valueRange = 0f..24f,
+                    steps = 23
+                )
+
+                Text(text = "${sliderPosition.start.toInt().toString()} - ${sliderPosition.endInclusive.toInt().toString()}")
+            }
+        }
+        Row (modifier = Modifier.fillMaxWidth()){
+            Column(modifier = Modifier.padding(16.dp)) {
+
+                Button(
+                    onClick = {
+                        onGenerateClick(Sports.Football);
+                        println(dateMinInput)
+                        val parsedDateMin = parseDate(dateMinInput) ?: Date()
+                        val parsedDateMax = parseDate(dateMaxInput) ?: Date()
+                        val minScore = scoreMin.toIntOrNull() ?: 0
+                        val maxScore = scoreMax.toIntOrNull() ?: 0
+                        val minSeason = seasonMin.toIntOrNull() ?: 0
+                        val maxSeason = seasonMax.toIntOrNull() ?: 0
+                        for(i in 0 ..< number ){
+                            val match = generateMatch(
+                                dateMin = parsedDateMin,
+                            dateMax = parsedDateMax,
+                            scoreMin = minScore,
+                            scoreMax = maxScore,
+                            seasonMin = minSeason,
+                            seasonMax = maxSeason,
+                                time = randomIntBetween(sliderPosition.start.toInt(),sliderPosition.endInclusive.toInt()).toString()
+                            )
+                            createFootballMatch(token,match)
+                        }
+                              },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = true,
+                ) {
+                    Text("Generate")
+                }
+            }
+        }
+    }
+
+}
 @Composable
 fun Sidebar(updateTab : (Tabs) -> Unit ,updateScaffoldState: () -> Unit){
     Box(contentAlignment = Alignment.CenterStart) {
@@ -399,17 +708,16 @@ fun Content(token: String) {
                     Sidebar(updateTab =  { tabi -> tab = tabi } , updateScaffoldState = { coroutineScope.launch { scaffoldState.drawerState.close()}})
             },
             drawerGesturesEnabled = true,
-            drawerShape = customShape(),
-            content = {
-                when(tab){
-                    Tabs.Scraper -> Text("Scraper")
-                    Tabs.Editor -> Editor(token)
+            drawerShape = customShape()
+        ) {
+            when (tab) {
+                Tabs.Scraper -> Text("Scraper")
+                Tabs.Editor -> Editor(token)
 
-                    Tabs.Generator-> Text("Generator")
+                Tabs.Generator -> Generator(token, { sport -> println(sport) })
 
-                }
             }
-        )
+        }
 }
 
 
