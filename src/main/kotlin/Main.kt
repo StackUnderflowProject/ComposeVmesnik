@@ -1,30 +1,20 @@
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 
+
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.painter.BrushPainter
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.input.key.Key.Companion.A
-import androidx.compose.ui.input.key.Key.Companion.R
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.useResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -32,17 +22,24 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import model.Match
+import model.Matches
+import model.Standings
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import scrapers.KZSScraper
+import scrapers.PLTScraper
+import scrapers.RZSScraper
 import java.io.IOException
-import java.time.LocalDate
+import java.lang.reflect.InvocationTargetException
 import java.util.*
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -55,6 +52,139 @@ fun Float.roundTo(decimalPlaces: Int): Float {
     val factor = 10.0.pow(decimalPlaces)
     return (this * factor).roundToInt() / factor.toFloat()
 }
+@Composable
+fun DataOrLoadingScreen(token: String,sports: Sports) {
+    var isLoading by remember { mutableStateOf(true) }
+    var data by remember { mutableStateOf<MutableList<FootballMatch>?>(null) }
+    val coroutineScope = currentCompositionLocalContext
+
+    /*DisposableEffect(Unit) {
+        val job = coroutineScope.launch(Dispatchers.IO) {
+            try {
+                isLoading = true
+                data = getMatches1()
+            } catch (e: Exception) {
+                println("Err: ${e.message}")
+            } finally {
+                isLoading = false
+            }
+        }
+        onDispose {
+            println("Canceled")
+            job.cancel()
+        }
+    }*/
+    LaunchedEffect(Unit){
+        try {
+        data = withContext(Dispatchers.IO){ when(sports){
+            Sports.Football -> {
+                val teams = PLTScraper.getTeams()
+                val stadiums = PLTScraper.getStadiums(teams = teams)
+                val matches = PLTScraper.getMatches(teams = teams, stadiums = stadiums)
+                val populatedMatches = mutableListOf<FootballMatch>()
+                matches.forEach { match ->
+                    val team = teams.find { it.id == match.away }
+                    val stadium= stadiums.find { it.id == match.stadium }
+
+                    populatedMatches.add(FootballMatch(match.id.toString(),parseDate(match.date.toString()) ?: Date(), match.time ?: "", Team(team?.id.toString(),team?.name ?: "","",team?.director ?: "",team?.coach ?: "",team?.logoPath ?: "",team?.season?.toInt() ?: 0),Team(team?.id.toString(),team?.name ?: "","",team?.director ?: "",team?.coach ?: "",team?.logoPath ?: "",team?.season?.toInt() ?: 0),match.score ?: "",match.location,StadiumU(_id = stadium?.id.toString(), name = stadium?.name ?: "", teamId = stadium?.teamId.toString(), location = Location(type = "", listOf(stadium?.location?.lat ?: 0.0,stadium?.location?.lng ?: 0.0)), capacity = stadium?.capacity?.toInt() ?: 0, buildYear = stadium?.buildYear?.toInt() ?: 0, imageUrl = stadium?.imagePath ?: "", season = stadium?.season?.toInt() ?: 0),match.season.toInt()))
+                }
+                populatedMatches
+            }
+
+            Sports.Handball -> {
+                val teams = RZSScraper.getTeams()
+                val stadiums = RZSScraper.getArenas(teams = teams)
+                val matches = RZSScraper.getMatches(teams = teams, arenas = stadiums)
+                val populatedMatches = mutableListOf<FootballMatch>()
+                matches.forEach { match ->
+                    val team = teams.find { it.id == match.away }
+                    val stadium= stadiums.find { it.id == match.stadium }
+
+                    populatedMatches.add(FootballMatch(match.id.toString(),parseDate(match.date.toString()) ?: Date(), match.time ?: "", Team(team?.id.toString(),team?.name ?: "","",team?.director ?: "",team?.coach ?: "",team?.logoPath ?: "",team?.season?.toInt() ?: 0),Team(team?.id.toString(),team?.name ?: "","",team?.director ?: "",team?.coach ?: "",team?.logoPath ?: "",team?.season?.toInt() ?: 0),match.score ?: "",match.location,StadiumU(_id = stadium?.id.toString(), name = stadium?.name ?: "", teamId = stadium?.teamId.toString(), location = Location(type = "", listOf(stadium?.location?.lat ?: 0.0,stadium?.location?.lng ?: 0.0)), capacity = stadium?.capacity?.toInt() ?: 0, buildYear = stadium?.buildYear?.toInt() ?: 0, imageUrl = stadium?.imagePath ?: "", season = stadium?.season?.toInt() ?: 0),match.season.toInt()))
+                }
+                populatedMatches
+            }
+
+        } }
+        }catch (e: Exception){
+            println(e)
+        }
+
+        isLoading = false
+    }
+
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        if (isLoading) {
+            CircularProgressIndicator()
+        } else {
+            data?.let { matches ->
+                when(sports){
+                    Sports.Football -> {
+                        Column {
+                            Row (Modifier.fillMaxWidth(),Arrangement.Center){  Button(
+                                onClick = {
+                                    data?.forEach{createFootballMatch(token,it)}
+                                    data = null
+                                },
+                                colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
+                            ) {
+                                Icon(imageVector = TablerIcons.Check, contentDescription = null)
+                            } }
+                            LazyGrid(data ?: mutableListOf(),token,0,{},false,{matches -> data = matches})
+
+                        }
+                    }
+                    Sports.Handball -> {
+                        Column {
+                            Row (Modifier.fillMaxWidth(),Arrangement.Center){ Button(
+                                onClick = {
+                                    data?.forEach{createHandballMatch(token,it)}
+                                },
+                                colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
+                            ) {
+                                Icon(imageVector = TablerIcons.Check, contentDescription = null)
+                            } }
+                            LazyGridH(data ?: mutableListOf(),token,false)
+
+                        }
+
+                    }
+                }
+
+            } ?: Text("No Data Available", fontSize = 20.sp)
+
+
+            /*LazyColumn {
+                item {
+                    data?.let {
+
+                        if (it.isNotEmpty()) {
+                            Button(
+                                onClick = {
+                                    data?.forEach { createMatchScraper(token,it,sports) }
+                                    //createMatchScraper(token = token, match, sports = sports)
+                                    data = listOf()
+                                },
+                                colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
+                            ) {
+                                Icon(imageVector = TablerIcons.Check, contentDescription = null)
+                            }
+                            it.forEach { match ->
+                                MatchItem(match = match){data = data!!.toMutableList().apply {   remove(match)  } }
+                            }
+                        } else {
+                            Text(text = "No Data Available", fontSize = 20.sp)
+                        }
+                    }
+                }
+            }*/
+
+
+        }
+    }
+}
+
 
 fun ClosedFloatingPointRange<Float>.roundTo(decimalPlaces: Int): ClosedFloatingPointRange<Float> {
     val roundedStart = start.roundTo(decimalPlaces)
@@ -72,6 +202,20 @@ data class FootballMatch(
     val stadium: StadiumU,
     val season: Int,
 )
+data class Standing(
+    val _id: String,
+    val place: Int,
+    val team: Team,
+    val gamesPlayed: Int,
+    val wins: Int,
+    val draws: Int,
+    val losses: Int,
+    val goalsScored: Int,
+    val goalsConceded: Int,
+    val points: Int,
+    val season: Int
+)
+
 
 data class Team(
     val _id: String,
@@ -116,7 +260,12 @@ fun randomDateBetween(startDate: Date, endDate: Date): Date {
 }
 
 fun randomIntBetween(start: Int, end: Int): Int {
-    return (start..end).random()
+    return try {
+        (start..end).random()
+    }
+    catch (e: Exception){
+        0
+    }
 }
 
 fun generateMatch(
@@ -126,76 +275,31 @@ fun generateMatch(
     scoreMax: Int,
     seasonMin: Int,
     seasonMax: Int,
-    time : String
+    time : String,
+    sports: Sports
 ): FootballMatch {
     val randomDate = randomDateBetween(dateMin, dateMax)
     val randomSeason = randomIntBetween(seasonMin, seasonMax)
-    val teams = fetchFootballTeams()
-    val stadiums = fetchFootballStadiums()
+    val teams = if(sports == Sports.Football){fetchFootballTeams()}else{fetchHandballTeams()}
+    val stadiums = if(sports == Sports.Football){fetchFootballStadiums()}else{fetchHandballStadiums()}
     val rds = stadiums!!.random()
+    println(rds)
     return FootballMatch(
         _id = "",
         date = randomDate,
         score = "${randomIntBetween(scoreMin,scoreMax)}-${randomIntBetween(scoreMin,scoreMax)}",
-        season = randomSeason,
+        season = randomSeason ,
         location = "David",
         away = teams!!.random(),
         home = teams!!.random(),
         time = time,
-        stadium = StadiumU(rds._id,rds.name, buildYear = rds.buildYear, capacity = rds.capacity, imageUrl = rds.imageUrl, location =  rds.location, season =  rds.season, teamId = rds.teamId._id)
+        stadium = StadiumU(_id = rds._id, name = rds.name, buildYear = rds.buildYear, capacity = rds.capacity, imageUrl = rds.imageUrl ?: "", location =  rds.location, season =  rds.season, teamId = rds.teamId._id)
     )
 }
-fun fetchFootballStadiums():MutableList<Stadium>{
-    val client = OkHttpClient()
-    val request = Request.Builder()
-        .url("http://localhost:3000/footballStadium/")
-        .build()
-    try {
-        val response: Response = client.newCall(request).execute()
-        val json = response.body?.string() ?: ""
-        val type = object : TypeToken<MutableList<Stadium>>() {}.type
-        val gson = Gson()
-        var matches : MutableList<Stadium> = gson.fromJson(json,type)
 
-        return matches
-    } catch (e: IOException) {
-        e.printStackTrace()
-        return mutableListOf()
-    }
-}
-fun fetchStadiums(sports: Sports): List<Stadium>?
-{
-    var url = ""
-    if (sports == Sports.Football){
-        url = "http://localhost:3000/footballSatadium/"
-    }
-    else{
-        url = "http://localhost:3000/handballStadium/"
-    }
-    val client = OkHttpClient()
-    val request = Request.Builder()
-        .url(url)
-        .build()
 
-    return try {
-        val response: Response = client.newCall(request).execute()
-        if (response.isSuccessful) {
-            val body = response.body?.string()
-            if (!body.isNullOrEmpty()) {
-                val teamListType = object : TypeToken<List<Stadium>>() {}.type
-                Gson().fromJson(body, teamListType)
-            } else {
-                null
-            }
-        } else {
-            println("Error: ${response.code}")
-            null
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        null
-    }
-}
+
+
 
 @Composable
 fun DropdownDatasets(updateDatasets: (Datasets) -> Unit) {
@@ -378,6 +482,63 @@ fun DropdownSports(updateSports: (Sports) -> Unit){
 
 }
 }
+@Composable
+fun StandingsScreen(sports: Sports) {
+    var isLoading by remember { mutableStateOf(true) }
+    var standings by remember { mutableStateOf<MutableList<Standing>?>(null) }
+
+    LaunchedEffect(Unit) {
+        isLoading = true
+        try {
+            standings = withContext(Dispatchers.IO) {
+                when (sports) {
+                    Sports.Football -> fetchStandingsFootball()
+                    Sports.Handball -> fetchStandingsHandball()
+                }
+            }
+        } catch (e: Exception) {
+            println("Error: ${e.message}")
+        } finally {
+            isLoading = false
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        if (isLoading) {
+            CircularProgressIndicator()
+        } else {
+            standings?.let {
+                StandingsContent(it)
+            } ?: Text("No Data Available", fontSize = 20.sp)
+        }
+    }
+}
+
+@Composable
+fun StandingsContent(standing: MutableList<Standing>) {
+    LazyColumn {
+        items(standing) { standing ->
+            StandingItem(standing)
+            Divider()
+        }
+    }
+}
+
+@Composable
+fun StandingItem(standing: Standing) {
+    Row(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+        Text(text = standing.place.toString(), modifier = Modifier.weight(1f))
+
+        Text(text = standing.team.name, modifier = Modifier.weight(4f))
+        Text(text = standing.gamesPlayed.toString(), modifier = Modifier.weight(1f))
+        Text(text = standing.wins.toString(), modifier = Modifier.weight(1f))
+        Text(text = standing.draws.toString(), modifier = Modifier.weight(1f))
+        Text(text = standing.losses.toString(), modifier = Modifier.weight(1f))
+        Text(text = standing.goalsScored.toString(), modifier = Modifier.weight(1f))
+        Text(text = standing.goalsConceded.toString(), modifier = Modifier.weight(1f))
+        Text(text = standing.points.toString(), modifier = Modifier.weight(1f))
+    }
+}
 
 
 
@@ -402,21 +563,20 @@ fun Editor(token: String){
                     if (footballMatches == null) {
                         Text("Fetching...")
                     } else {
-                        LazyGrid(token = token, items = footballMatches!!, index = index){num -> index = num; }
+                        LazyGrid(token = token, items = footballMatches!!, index = index, update = true, updateIndex = { num -> index = num; }, updateMatches = {})
                     }};
                     Datasets.Teams ->  LazyGrid(fetchFootballTeams(),token)
-                    else -> Text("else")}
+                    else -> StandingsScreen(sports = sport)}
                 Sports.Handball -> when(datasets){
                     Datasets.Matches-> {
                     val handballMatches by produceState<MutableList<FootballMatch>?>(initialValue = null) { value = fetchHandballMatches((token)) }
                     if (handballMatches == null) {
                         Text("Fetching...")
                     } else {
-                        LazyGridH(token = token, items = handballMatches!!)
+                        LazyGridH(token = token, items = handballMatches!!, update = true)
                     }};
                     Datasets.Teams ->  LazyGridH(fetchHandballTeams(),token)
-
-                    else ->Text("else")
+                    else -> StandingsScreen(sports = sport)
                 }
             }
         }  }
@@ -426,6 +586,32 @@ fun Editor(token: String){
 
 
     }
+@Composable
+fun Scrapper(token: String){
+    var sport by remember { mutableStateOf(Sports.values().first()) }
+    var index by remember { mutableStateOf(0) }
+    Column {
+        Row (modifier = Modifier.padding(start = 20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround){
+            DropdownSports { sp -> sport = sp}
+        }
+
+
+        Row(modifier = Modifier.fillMaxSize()) {
+
+            Box( modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+                when(sport){
+                    Sports.Football -> DataOrLoadingScreen(token = token, sports = Sports.Football)
+                    //Sports.Handball -> DataOrLoadingScreen (token = token, sports = Sports.Handball, getMatches1 = { getMatchesH() })
+                    Sports.Handball -> DataOrLoadingScreen(token = token, sports = Sports.Handball)
+                    }
+                }
+            }  }
+    }
+
+
+
+
+
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun Generator(token: String,onGenerateClick: (Sports)-> Unit) {
@@ -444,7 +630,7 @@ fun Generator(token: String,onGenerateClick: (Sports)-> Unit) {
 
 
     Column(modifier = Modifier.padding(16.dp)) {
-        // Row for dropdowns
+        DropdownSports { sport -> sports = sport  }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -600,9 +786,12 @@ fun Generator(token: String,onGenerateClick: (Sports)-> Unit) {
                             scoreMax = maxScore,
                             seasonMin = minSeason,
                             seasonMax = maxSeason,
-                                time = randomIntBetween(sliderPosition.start.toInt(),sliderPosition.endInclusive.toInt()).toString()
+                                time = randomIntBetween(sliderPosition.start.toInt(),sliderPosition.endInclusive.toInt()).toString(),
+                                sports
                             )
-                            createFootballMatch(token,match)
+
+                            if (sports == Sports.Football) createFootballMatch(token,match)
+                            if (sports == Sports.Handball) createHandballMatch(token,match)
                         }
                               },
                     modifier = Modifier.fillMaxWidth(),
@@ -639,7 +828,7 @@ fun Sidebar(updateTab : (Tabs) -> Unit ,updateScaffoldState: () -> Unit){
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Button(onClick = {updateTab(Tabs.Scraper);updateScaffoldState()}, colors = ButtonDefaults.buttonColors(),) {
                     Icon(
-                        imageVector = Icons.Filled.Settings,
+                        imageVector = TablerIcons.Pokeball,
                         contentDescription = null,
                         modifier = Modifier.padding(end = 5.dp)
                     )
@@ -652,7 +841,7 @@ fun Sidebar(updateTab : (Tabs) -> Unit ,updateScaffoldState: () -> Unit){
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Button(onClick = {updateTab(Tabs.Editor);updateScaffoldState()}, colors = ButtonDefaults.buttonColors()) {
                     Icon(
-                        imageVector = Icons.Filled.Settings,
+                        imageVector = Icons.Filled.Edit,
                         contentDescription = null,
                         modifier = Modifier.padding(end = 5.dp)
                     )
@@ -711,10 +900,10 @@ fun Content(token: String) {
             drawerShape = customShape()
         ) {
             when (tab) {
-                Tabs.Scraper -> Text("Scraper")
+                Tabs.Scraper -> Scrapper(token)
                 Tabs.Editor -> Editor(token)
 
-                Tabs.Generator -> Generator(token, { sport -> println(sport) })
+                Tabs.Generator -> Generator(token) { sport -> println(sport) }
 
             }
         }
@@ -725,7 +914,6 @@ fun Content(token: String) {
 @Composable
 @Preview
 fun App() {
-    var text by remember { mutableStateOf("Hello, World!") }
     var page by remember { mutableStateOf(Pages.Login) }
     var showToast by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("") }
@@ -801,7 +989,7 @@ fun Typography():androidx.compose.material.Typography {
 
 
 fun main() = application {
-    Window(onCloseRequest = ::exitApplication, title = "AdminTool") {
+    Window(onCloseRequest = ::exitApplication, title = "AdminTool", state = WindowState(size = DpSize(1000.dp,800.dp))) {
         App()
     }
 }

@@ -11,7 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -21,6 +20,7 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.Check
 import compose.icons.tablericons.Trash
 import compose.icons.tablericons.X
+import model.Match
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -28,10 +28,9 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
-import java.sql.Date
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.concurrent.thread
+
 fun parseDate(dateString: String): java.util.Date? {
     return try {
         val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -41,221 +40,12 @@ fun parseDate(dateString: String): java.util.Date? {
         null
     }
 }
-fun createFootballMatch(token: String, match: FootballMatch): Boolean {
-    val client = OkHttpClient()
 
-    val gson = Gson()
-    val jsonMatch = gson.toJson(match)
-    val requestBody: RequestBody = jsonMatch.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
-
-    val request = Request.Builder()
-        .url("http://localhost:3000/footballMatch")
-        .post(requestBody)
-        .addHeader("Authorization", "Bearer $token")
-        .build()
-
-    return try {
-        val response: Response = client.newCall(request).execute()
-        if (response.isSuccessful) {
-            println("Create successful: ${response.body?.string()}")
-            true
-        } else {
-            println("Create failed: ${response.code}")
-            false
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        false
-    }
-}fun fetchFootballMatches(token : String):MutableList<FootballMatch>{
-    val client = OkHttpClient()
-    val request = Request.Builder()
-        .url("http://localhost:3000/footballMatch/")
-        .build()
-    println("fetch")
-    try {
-        val response: Response = client.newCall(request).execute()
-        val json = response.body?.string() ?: ""
-        val type = object : TypeToken<MutableList<FootballMatch>>() {}.type
-        val gson = Gson()
-        var matches : MutableList<FootballMatch> = gson.fromJson(json,type)
-
-        return matches
-    } catch (e: IOException) {
-        e.printStackTrace()
-        return mutableListOf()
-    }
-}
-fun updateFootballMatch(token: String, updatedMatch: FootballMatch): Boolean {
-    val client = OkHttpClient()
-    val gson = Gson()
-    val jsonMatch = gson.toJson(updatedMatch)
-    val requestBody = jsonMatch.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
-
-    val request = Request.Builder()
-        .url("http://localhost:3000/footballMatch/${updatedMatch._id}")
-        .put(requestBody)
-        .addHeader("Authorization", "Bearer $token")
-        .build()
-
-    println("Updating match with ID: ${updatedMatch._id}")
-    return try {
-        val response: Response = client.newCall(request).execute()
-        if (response.isSuccessful) {
-            println("Update successful: ${response.body?.string()}")
-            true
-        } else {
-            println("Update failed: ${response.code}")
-            false
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        false
-    }
-}
-fun deleteFootballMatch(token: String, id: String): Boolean {
-    val client = OkHttpClient()
-
-    val request = Request.Builder()
-        .url("http://localhost:3000/footballMatch/$id")
-        .delete()
-        .addHeader("Authorization", "Bearer $token")
-        .build()
-
-    println("Deleting match with ID: $id")
-    return try {
-        val response: Response = client.newCall(request).execute()
-        if (response.isSuccessful) {
-            println("Delete successful: ${response.body?.string()}")
-            true
-        } else {
-            println("Delete failed: ${response.code}")
-            false
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        false
-    }
-}
-@Composable
-fun EditStadiumDropdownMenu(
-    stadium: Stadium,
-    onStadiumUpdated: (Stadium) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf(stadium.name) }
-    var capacity by remember { mutableStateOf(stadium.capacity.toString()) }
-    var locationType by remember { mutableStateOf(stadium.location.type) }
-    var coordinates by remember { mutableStateOf(stadium.location.coordinates.joinToString(", ")) }
-    var buildYear by remember { mutableStateOf(stadium.buildYear.toString()) }
-    var imageUrl by remember { mutableStateOf(stadium.imageUrl) }
-    var season by remember { mutableStateOf(stadium.season.toString()) }
-
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Button(onClick = {expanded = true}){
-                Text("Stadium")
-                Icon(imageVector = Icons.Filled.ArrowDropDown,null)
-            }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("Name") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = capacity,
-                        onValueChange = { capacity = it },
-                        label = { Text("Capacity") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Done
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = locationType,
-                        onValueChange = { locationType = it },
-                        label = { Text("Location Type") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = coordinates,
-                        onValueChange = { coordinates = it },
-                        label = { Text("Coordinates (comma separated)") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Done
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = buildYear,
-                        onValueChange = { buildYear = it },
-                        label = { Text("Build Year") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Done
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = imageUrl,
-                        onValueChange = { imageUrl = it },
-                        label = { Text("Image URL") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Uri,
-                            imeAction = ImeAction.Done
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = season,
-                        onValueChange = { season = it },
-                        label = { Text("Season") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Done
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Button(
-                        onClick = {
-                            val updatedStadium = stadium.copy(
-                                name = name,
-                                capacity = capacity.toIntOrNull() ?: stadium.capacity,
-                                location = Location(
-                                    type = locationType,
-                                    coordinates = coordinates.split(",").mapNotNull { it.trim().toDoubleOrNull() }
-                                ),
-                                buildYear = buildYear.toIntOrNull() ?: stadium.buildYear,
-                                imageUrl = imageUrl,
-                                season = season.toIntOrNull() ?: stadium.season
-                            )
-                            onStadiumUpdated(updatedStadium)
-                            expanded = false
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
-                    ) {
-                        Text("Save Changes")
-                    }
-                }
-            }
-        }
-    }
 
 
 
 @Composable
-fun LazyGrid(items: MutableList<FootballMatch>,token: String,index :Int,updateIndex: (Int)-> Unit) {
+fun LazyGrid(items: MutableList<FootballMatch>, token: String, index:Int, updateIndex: (Int)-> Unit,update : Boolean,updateMatches : (MutableList<FootballMatch>)->Unit) {
     var matches by remember { mutableStateOf(items) }
     var scrState = rememberLazyListState(index)
     LaunchedEffect(scrState.firstVisibleItemIndex){
@@ -268,14 +58,14 @@ fun LazyGrid(items: MutableList<FootballMatch>,token: String,index :Int,updateIn
         ) {
             items(matches.size) { index ->
                 FMatch(token = token,matches[index], onUpdateMatch =  { updatedMatch ->
-                    println(updatedMatch.score)
 
                     matches = matches.toMutableList().apply { this[index] = updatedMatch }
                 }, deleteMatch =
 
                 { match ->
                     matches = matches.toMutableList().apply { remove(match) }
-                })
+                    updateMatches(matches)
+                },update)
             }
         }
         VerticalScrollbar(
@@ -285,6 +75,7 @@ fun LazyGrid(items: MutableList<FootballMatch>,token: String,index :Int,updateIn
         )
     }
 }
+
 
 @Composable
 fun TextFild(label: String,value: String,updateData : (String) -> Unit){
@@ -298,7 +89,7 @@ fun TextFild(label: String,value: String,updateData : (String) -> Unit){
 
 }
 @Composable
-fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballMatch) -> Unit,deleteMatch: (FootballMatch)->Unit) {
+fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballMatch) -> Unit,deleteMatch: (FootballMatch)->Unit,update: Boolean) {
     var errorMessage by remember { mutableStateOf("") }
 
     var dateInput by remember {  mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(footballMatch.date).toString()) }
@@ -333,11 +124,11 @@ fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballM
                 Text(text = "Location: ${footballMatch.location}", style = MaterialTheme.typography.h6 )
                 Text(text = "Season: ${footballMatch.season}", style = MaterialTheme.typography.h6 )
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Button(onClick = { editing = !editing }) {
                         Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
                     }
-                    Button(onClick = {deleteFootballMatch(token,footballMatch._id);deleteMatch(footballMatch)}, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)) {
+                    Button(onClick = {if(update)deleteFootballMatch(token,footballMatch._id);deleteMatch(footballMatch)}, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)) {
                         Icon(imageVector = TablerIcons.Trash, contentDescription = null)
                     }
                 }
@@ -399,7 +190,7 @@ fun FMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballM
                             location = location,
                             )
                             onUpdateMatch(mtch)
-                            updateFootballMatch(token = token,mtch)
+                            if (update) {updateFootballMatch(token = token,mtch)}
                             editing = false
                         },
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)

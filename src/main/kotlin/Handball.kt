@@ -24,6 +24,7 @@ import compose.icons.tablericons.X
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
@@ -32,78 +33,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.concurrent.thread
 
-fun fetchHandballMatches(token : String):MutableList<FootballMatch>{
-    val client = OkHttpClient()
-    val request = Request.Builder()
-        .url("http://localhost:3000/handballMatch/")
-        .build()
-    try {
-        val response: Response = client.newCall(request).execute()
-        val json = response.body?.string() ?: ""
-        val type = object : TypeToken<MutableList<FootballMatch>>() {}.type
-        val gson = Gson()
-        var matches : MutableList<FootballMatch> = gson.fromJson(json,type)
-
-        return matches
-    } catch (e: IOException) {
-        e.printStackTrace()
-        return mutableListOf()
-    }
-}
-fun updateHandballMatch(token: String, updatedMatch: FootballMatch): Boolean {
-    val client = OkHttpClient()
-    val gson = Gson()
-    val jsonMatch = gson.toJson(updatedMatch)
-    val requestBody = jsonMatch.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
-
-    val request = Request.Builder()
-        .url("http://localhost:3000/handballMatch/${updatedMatch._id}")
-        .put(requestBody)
-        .addHeader("Authorization", "Bearer $token")
-        .build()
-
-    println("Updating match with ID: ${updatedMatch._id}")
-    return try {
-        val response: Response = client.newCall(request).execute()
-        if (response.isSuccessful) {
-            println("Update successful: ${response.body?.string()}")
-            true
-        } else {
-            println("Update failed: ${response.code}")
-            false
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        false
-    }
-}
-fun deleteHandballMatch(token: String, id: String): Boolean {
-    val client = OkHttpClient()
-
-    val request = Request.Builder()
-        .url("http://localhost:3000/handballMatch/$id")
-        .delete()
-        .addHeader("Authorization", "Bearer $token")
-        .build()
-
-    println("Deleting match with ID: $id")
-    return try {
-        val response: Response = client.newCall(request).execute()
-        if (response.isSuccessful) {
-            println("Delete successful: ${response.body?.string()}")
-            true
-        } else {
-            println("Delete failed: ${response.code}")
-            false
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        false
-    }
-}
 
 @Composable
-fun LazyGridH(items: MutableList<FootballMatch>,token: String) {
+fun LazyGridH(items: MutableList<FootballMatch>,token: String,update : Boolean) {
     val state = rememberLazyListState(0)
     var matches by remember { mutableStateOf(items) }
     Box(modifier = Modifier.fillMaxSize()) {
@@ -113,14 +45,13 @@ fun LazyGridH(items: MutableList<FootballMatch>,token: String) {
         ) {
             items(matches.size) { index ->
                 HMatch(token = token,matches[index], onUpdateMatch =  { updatedMatch ->
-                    println(updatedMatch.score)
 
                     matches = matches.toMutableList().apply { this[index] = updatedMatch }
                 }, deleteMatch =
 
                 { match ->
                     matches = matches.toMutableList().apply { remove(match) }
-                })
+                },update)
             }
         }
         VerticalScrollbar(
@@ -142,7 +73,7 @@ fun TextFild(label: String,value: String,updateData : (String) -> Unit){
 
 }*/
 @Composable
-fun HMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballMatch) -> Unit,deleteMatch: (FootballMatch)->Unit) {
+fun HMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballMatch) -> Unit,deleteMatch: (FootballMatch)->Unit,update: Boolean) {
     var errorMessage by remember { mutableStateOf("") }
 
     var dateInput by remember {  mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(footballMatch.date).toString()) }
@@ -179,7 +110,8 @@ fun HMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballM
                     Button(onClick = { editing = !editing }) {
                         Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
                     }
-                    Button(onClick = {deleteHandballMatch( token,footballMatch._id);deleteMatch(footballMatch)}, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)) {
+                    Button(onClick = {if (update) deleteHandballMatch( token,footballMatch._id);
+                        deleteMatch(footballMatch)}, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)) {
                         Icon(imageVector = TablerIcons.Trash, contentDescription = null)
                     }
                 }
@@ -241,7 +173,7 @@ fun HMatch(token: String,footballMatch: FootballMatch, onUpdateMatch: (FootballM
                                 location = location,
                             )
                             onUpdateMatch(mtch)
-                            updateHandballMatch(token = token,mtch)
+                            if (update) updateHandballMatch(token = token,mtch)
                             editing = false
                         },
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
