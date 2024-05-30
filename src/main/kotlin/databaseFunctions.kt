@@ -1,4 +1,5 @@
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -51,6 +52,71 @@ fun createFootballMatch(token: String, match: FootballMatch): Boolean {
     val gson = Gson()
     val jsonMatch = gson.toJson(match)
     val requestBody: RequestBody = jsonMatch.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+
+    val request = Request.Builder()
+        .url("http://localhost:3000/footballMatch")
+        .post(requestBody)
+        .addHeader("Authorization", "Bearer $token")
+        .build()
+
+    return try {
+        val response: Response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            println("Create successful: ${response.body?.string()}")
+            true
+        } else {
+            println("Create failed: ${response.code}")
+            false
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        false
+    }
+}
+fun createMatchH(token: String,match: FootballMatch,id: String):Boolean {
+    val client = OkHttpClient()
+
+    val gson = Gson()
+    val jsonMatch: JsonObject = gson.toJsonTree(match).asJsonObject
+
+    jsonMatch.addProperty("stadium", id)
+
+    // Convert JsonObject back to JSON string
+    val jsonMatchString = gson.toJson(jsonMatch)
+    val requestBody: RequestBody = jsonMatchString.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+
+    val request = Request.Builder()
+        .url("http://localhost:3000/handballMatch")
+        .post(requestBody)
+        .addHeader("Authorization", "Bearer $token")
+        .build()
+
+    return try {
+        val response: Response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            println("Create successful: ${response.body?.string()}")
+            true
+        } else {
+            println("Create failed: ${response.code}")
+            false
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        false
+    }
+}
+fun createMatch(token: String,match: FootballMatch,id: String):Boolean {
+    val client = OkHttpClient()
+
+    val gson = Gson()
+    val jsonMatch: JsonObject = gson.toJsonTree(match).asJsonObject
+
+    // Manually set the stadium field to the id value
+    jsonMatch.addProperty("stadium", id)
+
+    // Convert JsonObject back to JSON string
+    val jsonMatchString = gson.toJson(jsonMatch)
+    val requestBody: RequestBody = jsonMatchString.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
 
     val request = Request.Builder()
         .url("http://localhost:3000/footballMatch")

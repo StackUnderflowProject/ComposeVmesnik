@@ -20,14 +20,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Check
 import compose.icons.tablericons.Trash
 import compose.icons.tablericons.X
+import interfaces.ITeam
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
@@ -51,6 +54,133 @@ fun fetchFootballTeams():MutableList<Team>{
         return mutableListOf()
     }
 }
+fun createFootballTeam(token: String,team: Team): Boolean {
+    val client = OkHttpClient()
+
+    val gson = Gson()
+    val jsonMatch = gson.toJson(team)
+    val requestBody: RequestBody = jsonMatch.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+
+    val request = Request.Builder()
+        .url("http://localhost:3000/footballTeam")
+        .post(requestBody)
+        .addHeader("Authorization", "Bearer $token")
+        .build()
+
+    return try {
+        val response: Response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            println("Create successful: ${response.body?.string()}")
+            true
+        } else {
+            println("Create failed: ${response.code}")
+            false
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        false
+    }
+}
+fun createHandballTeam(token: String,team: Team): Boolean {
+    val client = OkHttpClient()
+
+    val gson = Gson()
+    val jsonMatch = gson.toJson(team)
+    val requestBody: RequestBody = jsonMatch.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+
+    val request = Request.Builder()
+        .url("http://localhost:3000/handballTeam")
+        .post(requestBody)
+        .addHeader("Authorization", "Bearer $token")
+        .build()
+
+    return try {
+        val response: Response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            println("Create successful: ${response.body?.string()}")
+            true
+        } else {
+            println("Create failed: ${response.code}")
+            false
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        false
+    }
+}
+fun createFootballStadion(token: String,stadium : StadiumU): String? {
+    val client = OkHttpClient()
+    val gson = Gson()
+    val jsonStadium = gson.toJson(stadium)
+
+    val requestBody: RequestBody = jsonStadium.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+
+    val request = Request.Builder()
+        .url("http://localhost:3000/footballStadium")
+        .post(requestBody)
+        .addHeader("Authorization", "Bearer $token")
+        .build()
+
+    return try {
+        val response: Response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string()
+            response.close() // Close the response to avoid resource leaks
+
+            if (responseBody != null) {
+                val jsonResponse = gson.fromJson(responseBody, JsonObject::class.java)
+                return jsonResponse.get("_id")?.asString
+            } else {
+                println("Response body is null")
+                null
+            }
+        } else {
+            println("Create failed: ${response.code}")
+            response.close() // Close the response to avoid resource leaks
+            null
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        null
+    }
+}
+fun createHandballStadion(token: String,stadium : StadiumU): String? {
+    val client = OkHttpClient()
+    val gson = Gson()
+    val jsonStadium = gson.toJson(stadium)
+
+    val requestBody: RequestBody = jsonStadium.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+
+    val request = Request.Builder()
+        .url("http://localhost:3000/handballStadium")
+        .post(requestBody)
+        .addHeader("Authorization", "Bearer $token")
+        .build()
+
+    return try {
+        val response: Response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string()
+            response.close() // Close the response to avoid resource leaks
+
+            if (responseBody != null) {
+                val jsonResponse = gson.fromJson(responseBody, JsonObject::class.java)
+                return jsonResponse.get("_id")?.asString
+            } else {
+                println("Response body is null")
+                null
+            }
+        } else {
+            println("Create failed: ${response.code}")
+            response.close() // Close the response to avoid resource leaks
+            null
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        null
+    }
+}
+
 fun deleteFootballTeam(token: String, id: String): Boolean {
     val client = OkHttpClient()
 

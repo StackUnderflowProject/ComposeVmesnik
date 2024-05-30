@@ -4,7 +4,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-
+import model.FootballTeam
 
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -28,6 +28,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
+import interfaces.ITeam
 import kotlinx.coroutines.*
 import model.Match
 import model.Matches
@@ -79,28 +80,45 @@ fun DataOrLoadingScreen(token: String,sports: Sports) {
         data = withContext(Dispatchers.IO){ when(sports){
             Sports.Football -> {
                 val teams = PLTScraper.getTeams()
+                teams.forEach{ createFootballTeam(token,Team(it?.id.toString(),it?.name ?: "","",it?.director ?: "",it?.coach ?: "",it?.logoPath ?: "",it?.season?.toInt() ?: 1))}
                 val stadiums = PLTScraper.getStadiums(teams = teams)
                 val matches = PLTScraper.getMatches(teams = teams, stadiums = stadiums)
                 val populatedMatches = mutableListOf<FootballMatch>()
                 matches.forEach { match ->
-                    val team = teams.find { it.id == match.away }
-                    val stadium= stadiums.find { it.id == match.stadium }
+                    val  tm = teams.find { it.id == match.away }
+                    val  tmH = teams.find { it.id == match.home }
+                    val team = Team(tm?.id.toString(),tm?.name ?: "","",tm?.director ?: "",tm?.coach ?: "",tm?.logoPath ?: "",tm?.season?.toInt() ?: 1)
+                    val teamH = Team(tmH?.id.toString(),tmH?.name ?: "","",tmH?.director ?: "",tmH?.coach ?: "",tmH?.logoPath ?: "",tmH?.season?.toInt() ?: 1)
 
-                    populatedMatches.add(FootballMatch(match.id.toString(),parseDate(match.date.toString()) ?: Date(), match.time ?: "", Team(team?.id.toString(),team?.name ?: "","",team?.director ?: "",team?.coach ?: "",team?.logoPath ?: "",team?.season?.toInt() ?: 0),Team(team?.id.toString(),team?.name ?: "","",team?.director ?: "",team?.coach ?: "",team?.logoPath ?: "",team?.season?.toInt() ?: 0),match.score ?: "",match.location,StadiumU(_id = stadium?.id.toString(), name = stadium?.name ?: "", teamId = stadium?.teamId.toString(), location = Location(type = "", listOf(stadium?.location?.lat ?: 0.0,stadium?.location?.lng ?: 0.0)), capacity = stadium?.capacity?.toInt() ?: 0, buildYear = stadium?.buildYear?.toInt() ?: 0, imageUrl = stadium?.imagePath ?: "", season = stadium?.season?.toInt() ?: 0),match.season.toInt()))
+                    val stadium = stadiums.find { it.id == match.stadium }
+
+                    val stdm = StadiumU(_id = stadium?.id.toString(),stadium?.name ?: "",stadium?.teamId.toString(),Location("Point", listOf( stadium?.location?.lat ?: 0.0,stadium?.location?.lng ?: 0.0)),stadium?.capacity?.toInt() ?: 0,stadium?.buildYear?.toInt() ?: 0,stadium?.imagePath ?: "",stadium?.season?.toInt() ?: 0)
+                    val id = createFootballStadion(token,stdm)
+                    stdm._id = id ?: ""
+                    populatedMatches.add(FootballMatch(match.id.toString(),parseDate(match.date.toString()) ?: Date(), match.time ?: "", teamH,team,match.score ?: "",match.location,stdm,match.season.toInt()))
                 }
                 populatedMatches
             }
 
             Sports.Handball -> {
                 val teams = RZSScraper.getTeams()
+                teams.forEach{ createHandballTeam(token,Team(it?.id.toString(),it?.name ?: "","",it?.director ?: "",it?.coach ?: "",it?.logoPath ?: "",it?.season?.toInt() ?: 1))}
+
                 val stadiums = RZSScraper.getArenas(teams = teams)
                 val matches = RZSScraper.getMatches(teams = teams, arenas = stadiums)
                 val populatedMatches = mutableListOf<FootballMatch>()
                 matches.forEach { match ->
-                    val team = teams.find { it.id == match.away }
-                    val stadium= stadiums.find { it.id == match.stadium }
+                    val  tm = teams.find { it.id == match.away }
+                    val  tmH = teams.find { it.id == match.home }
+                    val team = Team(tm?.id.toString(),tm?.name ?: "","",tm?.director ?: "",tm?.coach ?: "",tm?.logoPath ?: "",tm?.season?.toInt() ?: 1)
+                    val teamH = Team(tmH?.id.toString(),tmH?.name ?: "","",tmH?.director ?: "",tmH?.coach ?: "",tmH?.logoPath ?: "",tmH?.season?.toInt() ?: 1)
 
-                    populatedMatches.add(FootballMatch(match.id.toString(),parseDate(match.date.toString()) ?: Date(), match.time ?: "", Team(team?.id.toString(),team?.name ?: "","",team?.director ?: "",team?.coach ?: "",team?.logoPath ?: "",team?.season?.toInt() ?: 0),Team(team?.id.toString(),team?.name ?: "","",team?.director ?: "",team?.coach ?: "",team?.logoPath ?: "",team?.season?.toInt() ?: 0),match.score ?: "",match.location,StadiumU(_id = stadium?.id.toString(), name = stadium?.name ?: "", teamId = stadium?.teamId.toString(), location = Location(type = "", listOf(stadium?.location?.lat ?: 0.0,stadium?.location?.lng ?: 0.0)), capacity = stadium?.capacity?.toInt() ?: 0, buildYear = stadium?.buildYear?.toInt() ?: 0, imageUrl = stadium?.imagePath ?: "", season = stadium?.season?.toInt() ?: 0),match.season.toInt()))
+                    val stadium = stadiums.find { it.id == match.stadium }
+
+                    val stdm = StadiumU(_id = stadium?.id.toString(),stadium?.name ?: "",stadium?.teamId.toString(),Location("Point", listOf( stadium?.location?.lat ?: 0.0,stadium?.location?.lng ?: 0.0)),stadium?.capacity?.toInt() ?: 0,stadium?.buildYear?.toInt() ?: 0,stadium?.imagePath ?: "",stadium?.season?.toInt() ?: 0)
+                    val id = createHandballStadion(token,stdm)
+                    stdm._id = id ?: ""
+                    populatedMatches.add(FootballMatch(match.id.toString(),parseDate(match.date.toString()) ?: Date(), match.time ?: "", teamH,team,match.score ?: "",match.location,stdm,match.season.toInt()))
                 }
                 populatedMatches
             }
@@ -124,7 +142,7 @@ fun DataOrLoadingScreen(token: String,sports: Sports) {
                         Column {
                             Row (Modifier.fillMaxWidth(),Arrangement.Center){  Button(
                                 onClick = {
-                                    data?.forEach{createFootballMatch(token,it)}
+                                    data?.forEach{createMatch(token,it,it.stadium._id)}
                                     data = null
                                 },
                                 colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
@@ -139,8 +157,9 @@ fun DataOrLoadingScreen(token: String,sports: Sports) {
                         Column {
                             Row (Modifier.fillMaxWidth(),Arrangement.Center){ Button(
                                 onClick = {
-                                    data?.forEach{createHandballMatch(token,it)}
-                                },
+                                    data?.forEach{createMatchH(token,it,it.stadium._id)}
+                                    data = null
+                                          },
                                 colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
                             ) {
                                 Icon(imageVector = TablerIcons.Check, contentDescription = null)
@@ -239,7 +258,7 @@ data class Stadium(
 )
 
 data class StadiumU(
-    val _id: String,
+    var _id: String,
     val name: String,
     val teamId: String,
     val location: Location,
